@@ -38,7 +38,13 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
       .join("rect")
       .attr("x", (d) => x(d.date)!)
       .attr("y", (d) => y(Math.max(d.open, d.close)))
-      .attr("height", (d) => Math.abs(y(d.open) - y(d.close)))
+      .attr("height", (d) => {
+        const height = Math.abs(y(d.open) - y(d.close));
+        if (height < 1) {
+          return 1;
+        }
+        return height;
+      })
       .attr("width", x.bandwidth())
       .attr("stroke", (d) => (d.open > d.close ? "red" : "green"));
 

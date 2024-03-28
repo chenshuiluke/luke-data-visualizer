@@ -1,3 +1,5 @@
+import { parse, format } from "date-fns";
+
 class StockApi {
   private baseUrl = "https://www.alphavantage.co/query";
   private apiKey = `${process.env.NEXT_PUBLIC_API_KEY}`;
@@ -723,13 +725,20 @@ class StockApi {
     const timeSeries = data["Time Series (5min)"];
     const result = [];
     for (const [key, value] of Object.entries<any>(timeSeries)) {
-      console.log("@@@ value", value);
+      console.log(
+        "@@@ value",
+        value,
+        value["1. open"],
+        parseFloat(value["1. high"])
+      );
+      const parsedDate = parse(key, "yyyy-MM-dd HH:mm:ss", new Date());
       result.push({
-        date: key,
-        high: parseFloat(value.high),
-        low: parseFloat(value.low),
-        open: parseFloat(value.open),
-        close: parseFloat(value.close),
+        date: format(parsedDate, "MM-dd h:mm aa"),
+        // date: key,
+        open: parseFloat(value["1. open"]),
+        high: parseFloat(value["2. high"]),
+        low: parseFloat(value["3. low"]),
+        close: parseFloat(value["4. close"]),
       });
     }
     return result;

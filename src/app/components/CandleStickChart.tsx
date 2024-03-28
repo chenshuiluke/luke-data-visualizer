@@ -8,15 +8,14 @@ type CandlestickChartProps = {
 
 const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
   const svgRef = useRef<SVGSVGElement>(null);
-
+  const width = 80 * data.length;
+  const height = 500;
   useEffect(() => {
     if (!data || data.length === 0) return;
     console.log("@@@ data", data);
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove(); // Clear SVG content before drawing
 
-    const width = 800;
-    const height = 400;
     const margin = { top: 20, right: 30, bottom: 30, left: 40 };
 
     const x = d3
@@ -50,7 +49,9 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
       .call(
         d3
           .axisBottom(x)
-          .tickFormat((domainValue: any, i: number) => data[i].date)
+          .tickFormat((domainValue: any, i: number) => {
+            return data[i].date;
+          })
           .tickSizeOuter(0)
       );
 
@@ -60,7 +61,16 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
       .call(d3.axisLeft(y));
   }, [data]); // Redraw chart if data changes
 
-  return <svg ref={svgRef} width="800" height="400"></svg>;
+  return (
+    <div
+      style={{
+        width: "100vw",
+        overflowX: "scroll",
+      }}
+    >
+      <svg ref={svgRef} width={width} height={height}></svg>
+    </div>
+  );
 };
 
 export default CandlestickChart;

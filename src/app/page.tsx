@@ -1,17 +1,9 @@
-"use client";
 import { useEffect, useState } from "react";
 import CandleStickChart from "./components/CandleStickChart";
 import CandleStickData from "./types/CandleStickData";
 import StockApi from "./api/Stock";
-export default function Home() {
-  const [data, setData] = useState<CandleStickData[]>([]);
-  const getStockData = async () => {
-    const results = await StockApi.getIntraday();
-    setData(results);
-  };
-  useEffect(() => {
-    getStockData().then();
-  }, []);
+export default async function Home() {
+  const data = await StockApi.getIntraday();
   // const data: CandleStickData[] = [
   //   { date: "2024-02-27", open: 181, close: 169, high: 182, low: 164 },
   //   { date: "2024-02-28", open: 131, close: 123, high: 134, low: 121 },

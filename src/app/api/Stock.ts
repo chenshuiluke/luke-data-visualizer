@@ -3606,7 +3606,8 @@ export class StockApi {
             );
             const parsedDate = parse(date, "yyyy-MM-dd HH:mm:ss", new Date());
             result.push({
-              date: format(parsedDate, "MM-dd h:mm aa"),
+              // date: format(parsedDate, "MM-dd h:mm aa"), @@@
+              date,
               open: parseFloat(value["1. open"]),
               high: parseFloat(value["2. high"]),
               low: parseFloat(value["3. low"]),

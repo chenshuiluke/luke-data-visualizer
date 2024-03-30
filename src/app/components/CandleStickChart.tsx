@@ -1,83 +1,130 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
-import * as d3 from "d3";
+import React, { useRef, useEffect, useState, use } from "react";
+import { timeFormat, timeParse } from "d3-time-format";
+import {
+  ChartCanvas,
+  Chart,
+  XAxis,
+  YAxis,
+  CandlestickSeries,
+  last,
+  discontinuousTimeScaleProvider,
+  MouseCoordinateX,
+  MouseCoordinateY,
+  HoverTooltip,
+} from "react-financial-charts";
+import useWindowDimensions from "../hooks/WindowDimensions";
 import CandleStickData from "../types/CandleStickData";
+import { format } from "date-fns";
+import { TooltipParams } from "../types/interfaces";
 
 type CandlestickChartProps = {
   data: CandleStickData[];
 };
 
 const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const width = 80 * data.length;
-  const height = 500;
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [xExtents, setXExtents] = useState<number[]>();
+  const xScale = useRef<any>();
+  const xAccessor = useRef<(data: any) => number>();
+  const displayXAccessor = useRef<(data: any) => number>();
+  const [display, setDisplay] = useState(false);
+
   useEffect(() => {
-    if (!data || data.length === 0) return;
-    console.log("@@@ data", data);
-    const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove(); // Clear SVG content before drawing
+    const transformedData = data.map((d) => ({
+      date: new Date(d.date),
+      open: d.open,
+      high: d.high,
+      low: d.low,
+      close: d.close,
+    }));
 
-    const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+    const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor(
+      (d) => {
+        return d?.date;
+      }
+    );
+    const scale = xScaleProvider(transformedData);
 
-    const x = d3
-      .scaleBand()
-      .domain(data.map((d) => d.date))
-      .range([margin.left, width - margin.right])
-      .padding(0.3);
+    const start = scale.xAccessor(last(scale.data));
+    const end = scale.xAccessor(scale.data[0]);
+    xAccessor.current = scale.xAccessor;
+    xScale.current = scale.xScale;
+    displayXAccessor.current = scale.displayXAccessor;
 
-    const y = d3
-      .scaleLinear()
-      .domain([d3.min(data, (d) => d.low)!, d3.max(data, (d) => d.high)!])
-      .range([height - margin.bottom, margin.top]);
+    setChartData(scale.data);
+    setXExtents([start, end]);
+  }, [data]);
+  useEffect(() => {
+    if (chartData == null || xExtents == null) {
+      setDisplay(false);
+    } else {
+      setDisplay(true);
+    }
+  }, [chartData, xExtents]);
 
-    svg
-      .append("g")
-      .attr("fill", "none")
-      .attr("stroke", "#000")
-      .selectAll("rect")
-      .data(data)
-      .join("rect")
-      .attr("x", (d) => x(d.date)!)
-      .attr("y", (d) => y(Math.max(d.open, d.close)))
-      .attr("height", (d) => {
-        const height = Math.abs(y(d.open) - y(d.close));
-        if (height < 1) {
-          return 1;
-        }
-        return height;
-      })
-      .attr("width", x.bandwidth())
-      .attr("stroke", (d) => (d.open > d.close ? "red" : "green"));
-
-    // Draw axes
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .tickFormat((domainValue: any, i: number) => {
-            return data[i].date;
-          })
-          .tickSizeOuter(0)
-      );
-
-    svg
-      .append("g")
-      .attr("transform", `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y));
-  }, [data]); // Redraw chart if data changes
+  const { height, width } = useWindowDimensions();
 
   return (
-    <div
-      style={{
-        width: "100vw",
-        overflowX: "scroll",
-      }}
-    >
-      <svg ref={svgRef} width={width} height={height}></svg>
-    </div>
+    display && (
+      <ChartCanvas
+        height={height * 0.8}
+        ratio={3}
+        width={width}
+        margin={{ left: 50, right: 50, top: 10, bottom: 30 }}
+        data={chartData}
+        seriesName="CandleStickChart"
+        xScale={xScale.current}
+        xAccessor={xAccessor.current}
+        displayXAccessor={displayXAccessor.current}
+        xExtents={xExtents}
+      >
+        <Chart id={1} yExtents={(d) => [d.high, d.low]}>
+          <XAxis axisAt="bottom" orient="bottom" />
+          <YAxis axisAt="left" orient="left" ticks={5} />
+          <MouseCoordinateX
+            at="top"
+            orient="top"
+            displayFormat={timeFormat("%Y-%m-%d")}
+          />
+          <MouseCoordinateY
+            at="right"
+            orient="right"
+            displayFormat={(value: number) => {
+              return format(value, ".2f");
+            }}
+          />
+          <HoverTooltip
+            yAccessor={(d) => d.close}
+            fontFill="#000000"
+            fontFamily={"inherit"}
+            tooltip={{
+              content: (data: any) => {
+                return {
+                  x: data.date.toString(),
+                  y: [
+                    {
+                      label: "Open",
+                      value: data.open,
+                      stroke: "green",
+                    },
+                    {
+                      label: "Close",
+                      value: data.close,
+                      stroke: "red", // Optional: Customize the stroke color
+                    },
+                    // Include more data as needed
+                  ],
+                };
+              },
+            }}
+            fontSize={15}
+          />
+          <CandlestickSeries />
+        </Chart>
+      </ChartCanvas>
+    )
   );
 };
 

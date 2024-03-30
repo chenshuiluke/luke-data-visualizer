@@ -1,5 +1,10 @@
 import { parse, format } from "date-fns";
-import { StockData, TimeSeriesData, isTimeSeriesKey } from "../types/Stock";
+import {
+  IntervalNumbers,
+  StockData,
+  TimeSeriesData,
+  isTimeSeriesKey,
+} from "../types/Stock";
 import CandleStickData from "../types/CandleStickData";
 
 export class StockApi {
@@ -3581,18 +3586,26 @@ export class StockApi {
     };
   }
 
-  async getIntraday(interval: 1 | 5 | 15 | 30 | 60 = 30) {
-    // const response = await fetch(
-    //   `${this.baseUrl}?function=TIME_SERIES_INTRADAY&interval=5min&symbol=IBM&apikey=${this.apiKey}`
-    // );
-    // const data = await response.json();
-    const data = this.mockData;
+  async getIntraday(interval: IntervalNumbers = 30) {
+    const response = await fetch(
+      `${this.baseUrl}?function=TIME_SERIES_INTRADAY&interval=${interval}min&symbol=IBM&apikey=${this.apiKey}`,
+      {
+        next: {
+          revalidate: 86400,
+        },
+      }
+    );
+
+    const data = await (response.json() as Promise<StockData>);
+
+    // const data = this.mockData;
     const key = `Time Series (${interval}min)`;
+    console.log("@@@ key", key);
     const result: CandleStickData[] = [];
 
     if (isTimeSeriesKey(key)) {
       const timeSeries = data[key];
-
+      console.log("@@@ timeSeries", timeSeries, data);
       if (timeSeries) {
         // Ensure timeSeries is defined
         for (const [date, value] of Object.entries(timeSeries)) {

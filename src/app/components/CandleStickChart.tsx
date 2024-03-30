@@ -27,21 +27,12 @@ import {
 import useWindowDimensions from "../hooks/WindowDimensions";
 import CandleStickData from "../types/CandleStickData";
 import { format } from "d3-format";
-import { TooltipParams } from "../types/interfaces";
 
 type CandlestickChartProps = {
   data: CandleStickData[];
 };
 
 const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
-  const ema12 = ema()
-    .id(1)
-    .options({ windowSize: 12 })
-    .merge((d: { ema12: any }, c: any) => {
-      d.ema12 = c;
-    })
-    .accessor((d: { ema12: any }) => d.ema12);
-
   const transformedData = data.map((d) => ({
     date: d.date,
     open: d.open,
@@ -49,7 +40,6 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
     low: d.low,
     close: d.close,
   }));
-  ema12(transformedData);
   const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor(
     (d) => {
       return new Date(d?.date);
@@ -61,23 +51,23 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
   const end = scale.xAccessor(scale.data[0]);
 
   const { height, width } = useWindowDimensions();
-  const [yAxisLabelX, yAxisLabelY] = [-40, (height - 200) / 2];
+  const [yAxisLabelX, yAxisLabelY] = [-80, (height - 200) / 2];
 
   return (
     <>
       <ChartCanvas
         height={height * 0.8}
         useCrossHairStyleCursor={true}
-        ratio={1}
+        ratio={3}
         width={width}
-        margin={{ left: 100, right: 100, top: 100, bottom: 50 }}
+        margin={{ left: 100, right: 100, top: 20, bottom: 50 }}
         data={scale.data}
         seriesName="CandleStickChart"
         xScale={scale.xScale}
         xAccessor={scale.xAccessor}
         displayXAccessor={scale.displayXAccessor}
         xExtents={[start, end]}
-        zoomAnchor={lastVisibleItemBasedZoomAnchor}
+        // zoomAnchor={lastVisibleItemBasedZoomAnchor}
       >
         <Label
           x={(width - 200) / 2}
@@ -86,24 +76,17 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
           fillStyle={"#000000"}
           text="Intraday Time Series"
         />
-        <Label
-          x={yAxisLabelX}
-          y={yAxisLabelY}
-          rotate={-90}
-          fontSize={12}
-          text="Price"
-          fillStyle={"#000000"}
-        />
+
         <Chart id={1} yExtents={(d) => [d.high, d.low]}>
           <XAxis
             showGridLines
-            gridLinesStrokeStyle="#e0e3eb"
+            gridLinesStrokeStyle="#000000"
             axisAt="bottom"
             orient="bottom"
           />
           <YAxis
             showGridLines
-            gridLinesStrokeStyle="#e0e3eb"
+            gridLinesStrokeStyle="#000000"
             axisAt="left"
             orient="left"
           />
@@ -137,8 +120,18 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
                       stroke: "green",
                     },
                     {
+                      label: "High",
+                      value: data?.currentItem?.high,
+                      stroke: "green",
+                    },
+                    {
                       label: "Close",
                       value: data?.currentItem?.close,
+                      stroke: "red",
+                    },
+                    {
+                      label: "Low",
+                      value: data?.currentItem?.low,
                       stroke: "red",
                     },
                   ],
@@ -150,6 +143,14 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
           <ZoomButtons />
           <CrossHairCursor />
         </Chart>
+        <Label
+          x={yAxisLabelX}
+          y={yAxisLabelY}
+          rotate={-90}
+          fontSize={12}
+          text="Price"
+          fillStyle={"#000000"}
+        />
       </ChartCanvas>
     </>
   );

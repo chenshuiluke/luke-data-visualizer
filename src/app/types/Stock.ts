@@ -30,6 +30,8 @@ export type StockData = {
   };
 };
 
+export type IntervalNumbers = 1 | 5 | 15 | 30 | 60;
+
 export function isTimeSeriesKey(key: any): key is TimeSeriesKey {
   return [
     "Time Series (1min)",
@@ -38,4 +40,8 @@ export function isTimeSeriesKey(key: any): key is TimeSeriesKey {
     "Time Series (30min)",
     "Time Series (60min)",
   ].includes(key);
+}
+
+export function isIntervalNumber(num: any): num is IntervalNumbers {
+  return [1, 5, 15, 30, 60].includes(num);
 }

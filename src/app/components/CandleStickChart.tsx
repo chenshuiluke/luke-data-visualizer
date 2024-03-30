@@ -13,10 +13,20 @@ import {
   MouseCoordinateX,
   MouseCoordinateY,
   HoverTooltip,
+  CurrentCoordinate,
+  BarSeries,
+  EdgeIndicator,
+  OHLCTooltip,
+  ZoomButtons,
+  ema,
+  Label,
+  MouseCoordinateXV2,
+  CrossHairCursor,
+  lastVisibleItemBasedZoomAnchor,
 } from "react-financial-charts";
 import useWindowDimensions from "../hooks/WindowDimensions";
 import CandleStickData from "../types/CandleStickData";
-import { format } from "date-fns";
+import { format } from "d3-format";
 import { TooltipParams } from "../types/interfaces";
 
 type CandlestickChartProps = {
@@ -24,76 +34,93 @@ type CandlestickChartProps = {
 };
 
 const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [xExtents, setXExtents] = useState<number[]>();
-  const xScale = useRef<any>();
-  const xAccessor = useRef<(data: any) => number>();
-  const displayXAccessor = useRef<(data: any) => number>();
-  const [display, setDisplay] = useState(false);
+  const ema12 = ema()
+    .id(1)
+    .options({ windowSize: 12 })
+    .merge((d: { ema12: any }, c: any) => {
+      d.ema12 = c;
+    })
+    .accessor((d: { ema12: any }) => d.ema12);
 
-  useEffect(() => {
-    const transformedData = data.map((d) => ({
-      date: new Date(d.date),
-      open: d.open,
-      high: d.high,
-      low: d.low,
-      close: d.close,
-    }));
-
-    const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor(
-      (d) => {
-        return d?.date;
-      }
-    );
-    const scale = xScaleProvider(transformedData);
-
-    const start = scale.xAccessor(last(scale.data));
-    const end = scale.xAccessor(scale.data[0]);
-    xAccessor.current = scale.xAccessor;
-    xScale.current = scale.xScale;
-    displayXAccessor.current = scale.displayXAccessor;
-
-    setChartData(scale.data);
-    setXExtents([start, end]);
-  }, [data]);
-  useEffect(() => {
-    if (chartData == null || xExtents == null) {
-      setDisplay(false);
-    } else {
-      setDisplay(true);
+  const transformedData = data.map((d) => ({
+    date: d.date,
+    open: d.open,
+    high: d.high,
+    low: d.low,
+    close: d.close,
+  }));
+  ema12(transformedData);
+  const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor(
+    (d) => {
+      return new Date(d?.date);
     }
-  }, [chartData, xExtents]);
+  );
+  const scale = xScaleProvider(transformedData);
+
+  const start = scale.xAccessor(last(scale.data));
+  const end = scale.xAccessor(scale.data[0]);
 
   const { height, width } = useWindowDimensions();
+  const [yAxisLabelX, yAxisLabelY] = [-40, (height - 200) / 2];
 
   return (
-    display && (
+    <>
       <ChartCanvas
         height={height * 0.8}
-        ratio={3}
+        useCrossHairStyleCursor={true}
+        ratio={1}
         width={width}
-        margin={{ left: 50, right: 50, top: 10, bottom: 30 }}
-        data={chartData}
+        margin={{ left: 100, right: 100, top: 100, bottom: 50 }}
+        data={scale.data}
         seriesName="CandleStickChart"
-        xScale={xScale.current}
-        xAccessor={xAccessor.current}
-        displayXAccessor={displayXAccessor.current}
-        xExtents={xExtents}
+        xScale={scale.xScale}
+        xAccessor={scale.xAccessor}
+        displayXAccessor={scale.displayXAccessor}
+        xExtents={[start, end]}
+        zoomAnchor={lastVisibleItemBasedZoomAnchor}
       >
+        <Label
+          x={(width - 200) / 2}
+          y={30}
+          fontSize={30}
+          fillStyle={"#000000"}
+          text="Intraday Time Series"
+        />
+        <Label
+          x={yAxisLabelX}
+          y={yAxisLabelY}
+          rotate={-90}
+          fontSize={12}
+          text="Price"
+          fillStyle={"#000000"}
+        />
         <Chart id={1} yExtents={(d) => [d.high, d.low]}>
-          <XAxis axisAt="bottom" orient="bottom" />
-          <YAxis axisAt="left" orient="left" ticks={5} />
+          <XAxis
+            showGridLines
+            gridLinesStrokeStyle="#e0e3eb"
+            axisAt="bottom"
+            orient="bottom"
+          />
+          <YAxis
+            showGridLines
+            gridLinesStrokeStyle="#e0e3eb"
+            axisAt="left"
+            orient="left"
+          />
+
+          <CandlestickSeries />
+          <OHLCTooltip origin={[0, 0]} />
           <MouseCoordinateX
-            at="top"
-            orient="top"
+            at="bottom"
+            orient="bottom"
             displayFormat={timeFormat("%Y-%m-%d")}
+            fill="#000000"
           />
           <MouseCoordinateY
             at="right"
             orient="right"
-            displayFormat={(value: number) => {
-              return format(value, ".2f");
-            }}
+            displayFormat={format(".2f")}
+            fill="#000000"
           />
           <HoverTooltip
             yAccessor={(d) => d.close}
@@ -102,29 +129,29 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
             tooltip={{
               content: (data: any) => {
                 return {
-                  x: data.date.toString(),
+                  x: data?.currentItem?.date,
                   y: [
                     {
                       label: "Open",
-                      value: data.open,
+                      value: data?.currentItem?.open,
                       stroke: "green",
                     },
                     {
                       label: "Close",
-                      value: data.close,
-                      stroke: "red", // Optional: Customize the stroke color
+                      value: data?.currentItem?.close,
+                      stroke: "red",
                     },
-                    // Include more data as needed
                   ],
                 };
               },
             }}
             fontSize={15}
           />
-          <CandlestickSeries />
+          <ZoomButtons />
+          <CrossHairCursor />
         </Chart>
       </ChartCanvas>
-    )
+    </>
   );
 };
 
